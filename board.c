@@ -1,25 +1,39 @@
 #include "board.h"
 #include <stdio.h>
 
+// yo we gotta use static so we can internally link the functions
+
+static inline int absint(int v) { return (v < 0) ? -v : v; }
+
 static inline bool straight_check(const struct chess_board *board, int from_row_index, int from_column_index, int to_row_index, int to_column_index)
 {
     if (from_row_index == to_row_index && from_column_index == to_column_index)
+    {
         return false;
+    }
 
     if (from_row_index == to_row_index)
     {
         int step = (to_column_index > from_column_index) ? 1 : -1;
         for (int column = from_column_index + step; column != to_column_index; column += step)
+        {
             if (board->squares[from_row_index][column].has_piece)
+            {
                 return false;
+            }
+        }
         return true;
     }
     if (from_column_index == to_column_index)
     {
         int step = (to_row_index > from_row_index) ? 1 : -1;
         for (int row = from_row_index + step; row != to_row_index; row += step)
+        {
             if (board->squares[row][from_column_index].has_piece)
+            {
                 return false;
+            }
+        }
         return true;
     }
     return false;
@@ -33,11 +47,17 @@ static inline bool diag_check(const struct chess_board *board, int from_row_inde
     int abs_delta_col = absint(delta_col);
 
     if (abs_delta_row == 0 && abs_delta_col == 0)
+    {
         return false;
+    }
     if (abs_delta_row == 0 || abs_delta_col == 0)
+    {
         return false;
+    }
     if (abs_delta_row != abs_delta_col)
+    {
         return false;
+    }
 
     int row_step = (delta_row > 0) ? 1 : -1;
     int column_step = (delta_col > 0) ? 1 : -1;
@@ -152,6 +172,11 @@ void board_initialize(struct chess_board *board)
 
     board->next_move_player = PLAYER_WHITE;
 
+    board->rights.white_kingside = true;
+    board->rights.white_queenside = true;
+    board->rights.black_kingside = true;
+    board->rights.black_queenside = true;
+
     board->ep_row = -1;
     board->ep_col = -1;
 }
@@ -160,8 +185,7 @@ void board_complete_move(const struct chess_board *board, struct chess_move *mov
 {
     move->player = board->next_move_player;
 
-    if (move->to_row < 0 || move->to_row >= BOARD_SIZE ||
-        move->to_col < 0 || move->to_col >= BOARD_SIZE)
+    if (move->to_row < 0 || move->to_row >= BOARD_SIZE || move->to_col < 0 || move->to_col >= BOARD_SIZE)
     {
         panicf("illegal move: destination out of bounds\n");
     }
@@ -260,10 +284,7 @@ void board_complete_move(const struct chess_board *board, struct chess_move *mov
 
 void board_apply_move(struct chess_board *board, const struct chess_move *move)
 {
-    if (move->from_row < 0 || move->from_row >= BOARD_SIZE ||
-        move->from_col < 0 || move->from_col >= BOARD_SIZE ||
-        move->to_row < 0 || move->to_row >= BOARD_SIZE ||
-        move->to_col < 0 || move->to_col >= BOARD_SIZE)
+    if (move->from_row < 0 || move->from_row >= BOARD_SIZE || move->from_col < 0 || move->from_col >= BOARD_SIZE || move->to_row < 0 || move->to_row >= BOARD_SIZE || move->to_col < 0 || move->to_col >= BOARD_SIZE)
     {
         panicf("illegal move: source or destination out of bounds\n");
     }
@@ -287,50 +308,4 @@ void board_apply_move(struct chess_board *board, const struct chess_move *move)
 
 void board_summarize(const struct chess_board *board)
 {
-    printf("Side to move: %s\n", player_string(board->next_move_player));
-    printf("  a b c d e f g h\n");
-
-    for (int row = 0; row < BOARD_SIZE; ++row)
-    {
-        int rank_label = 8 - row;
-        printf("%d ", rank_label);
-
-        for (int col = 0; col < BOARD_SIZE; ++col)
-        {
-            const struct square *sq = &board->squares[row][col];
-            char ch = '.';
-            if (sq->has_piece)
-            {
-                switch (sq->piece)
-                {
-                case PIECE_PAWN:
-                    ch = 'p';
-                    break;
-                case PIECE_KNIGHT:
-                    ch = 'n';
-                    break;
-                case PIECE_BISHOP:
-                    ch = 'b';
-                    break;
-                case PIECE_ROOK:
-                    ch = 'r';
-                    break;
-                case PIECE_QUEEN:
-                    ch = 'q';
-                    break;
-                case PIECE_KING:
-                    ch = 'k';
-                    break;
-                }
-                if (sq->owner == PLAYER_WHITE && ch >= 'a' && ch <= 'z')
-                    ch = (char)(ch - 'a' + 'A');
-            }
-            printf("%c", ch);
-            if (col != BOARD_SIZE - 1)
-                printf(" ");
-        }
-        printf(" %d\n", rank_label);
-    }
-
-    printf("  a b c d e f g h\n\n");
 }

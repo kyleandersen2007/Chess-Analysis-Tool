@@ -49,14 +49,18 @@ struct square
         (row) = RANK_TO_ROW((square)[1]); \
     } while (0)
 
+struct castling_rights {
+    bool white_kingside;   // O-O
+    bool white_queenside;  // O-O-O
+    bool black_kingside;
+    bool black_queenside;
+};
+
 struct chess_board
 {
     enum chess_player next_move_player;
     struct square squares[BOARD_SIZE][BOARD_SIZE];
-
-    int8_t whiteScore;
-    int8_t blackScore;
-
+    struct castling_rights rights;
     int ep_row, ep_col; // used for en passant
 };
 
