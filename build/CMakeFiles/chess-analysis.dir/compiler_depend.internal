@@ -7,24 +7,12 @@ CMakeFiles/chess-analysis.dir/board.c.o
  /home/kyle/coding/c/143-Project/panic.h
  /usr/include/features-time64.h
  /usr/include/features.h
- /usr/include/math.h
  /usr/include/stdc-predef.h
- /usr/include/stdint.h
  /usr/include/stdio.h
  /usr/include/x86_64-linux-gnu/bits/floatn-common.h
  /usr/include/x86_64-linux-gnu/bits/floatn.h
- /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h
- /usr/include/x86_64-linux-gnu/bits/fp-fast.h
- /usr/include/x86_64-linux-gnu/bits/fp-logb.h
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h
- /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h
  /usr/include/x86_64-linux-gnu/bits/long-double.h
- /usr/include/x86_64-linux-gnu/bits/math-vector.h
- /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h
- /usr/include/x86_64-linux-gnu/bits/mathcalls.h
- /usr/include/x86_64-linux-gnu/bits/stdint-intn.h
- /usr/include/x86_64-linux-gnu/bits/stdint-least.h
- /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h
  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h
  /usr/include/x86_64-linux-gnu/bits/time64.h
  /usr/include/x86_64-linux-gnu/bits/timesize.h
@@ -37,7 +25,6 @@ CMakeFiles/chess-analysis.dir/board.c.o
  /usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h
  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h
  /usr/include/x86_64-linux-gnu/bits/typesizes.h
- /usr/include/x86_64-linux-gnu/bits/wchar.h
  /usr/include/x86_64-linux-gnu/bits/wordsize.h
  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h
  /usr/include/x86_64-linux-gnu/gnu/stubs.h
@@ -45,7 +32,6 @@ CMakeFiles/chess-analysis.dir/board.c.o
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h
- /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
 
 CMakeFiles/chess-analysis.dir/main.c.o
  /home/kyle/coding/c/143-Project/main.c
@@ -53,24 +39,12 @@ CMakeFiles/chess-analysis.dir/main.c.o
  /home/kyle/coding/c/143-Project/panic.h
  /usr/include/features-time64.h
  /usr/include/features.h
- /usr/include/math.h
  /usr/include/stdc-predef.h
- /usr/include/stdint.h
  /usr/include/stdio.h
  /usr/include/x86_64-linux-gnu/bits/floatn-common.h
  /usr/include/x86_64-linux-gnu/bits/floatn.h
- /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h
- /usr/include/x86_64-linux-gnu/bits/fp-fast.h
- /usr/include/x86_64-linux-gnu/bits/fp-logb.h
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h
- /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h
  /usr/include/x86_64-linux-gnu/bits/long-double.h
- /usr/include/x86_64-linux-gnu/bits/math-vector.h
- /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h
- /usr/include/x86_64-linux-gnu/bits/mathcalls.h
- /usr/include/x86_64-linux-gnu/bits/stdint-intn.h
- /usr/include/x86_64-linux-gnu/bits/stdint-least.h
- /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h
  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h
  /usr/include/x86_64-linux-gnu/bits/time64.h
  /usr/include/x86_64-linux-gnu/bits/timesize.h
@@ -83,7 +57,6 @@ CMakeFiles/chess-analysis.dir/main.c.o
  /usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h
  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h
  /usr/include/x86_64-linux-gnu/bits/typesizes.h
- /usr/include/x86_64-linux-gnu/bits/wchar.h
  /usr/include/x86_64-linux-gnu/bits/wordsize.h
  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h
  /usr/include/x86_64-linux-gnu/gnu/stubs.h
@@ -91,7 +64,6 @@ CMakeFiles/chess-analysis.dir/main.c.o
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h
- /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
 
 CMakeFiles/chess-analysis.dir/panic.c.o
  /home/kyle/coding/c/143-Project/panic.c
@@ -158,24 +130,12 @@ CMakeFiles/chess-analysis.dir/parser.c.o
  /home/kyle/coding/c/143-Project/parser.h
  /usr/include/features-time64.h
  /usr/include/features.h
- /usr/include/math.h
  /usr/include/stdc-predef.h
- /usr/include/stdint.h
  /usr/include/stdio.h
  /usr/include/x86_64-linux-gnu/bits/floatn-common.h
  /usr/include/x86_64-linux-gnu/bits/floatn.h
- /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h
- /usr/include/x86_64-linux-gnu/bits/fp-fast.h
- /usr/include/x86_64-linux-gnu/bits/fp-logb.h
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h
- /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h
  /usr/include/x86_64-linux-gnu/bits/long-double.h
- /usr/include/x86_64-linux-gnu/bits/math-vector.h
- /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h
- /usr/include/x86_64-linux-gnu/bits/mathcalls.h
- /usr/include/x86_64-linux-gnu/bits/stdint-intn.h
- /usr/include/x86_64-linux-gnu/bits/stdint-least.h
- /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h
  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h
  /usr/include/x86_64-linux-gnu/bits/time64.h
  /usr/include/x86_64-linux-gnu/bits/timesize.h
@@ -188,7 +148,6 @@ CMakeFiles/chess-analysis.dir/parser.c.o
  /usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h
  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h
  /usr/include/x86_64-linux-gnu/bits/typesizes.h
- /usr/include/x86_64-linux-gnu/bits/wchar.h
  /usr/include/x86_64-linux-gnu/bits/wordsize.h
  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h
  /usr/include/x86_64-linux-gnu/gnu/stubs.h
@@ -196,5 +155,4 @@ CMakeFiles/chess-analysis.dir/parser.c.o
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h
- /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
 

@@ -2,21 +2,11 @@
 #define APSC143__BOARD_H
 
 #include <stdio.h>
-#include <stdint.h>
 #include <stdbool.h>
-#include <math.h>
 #include "panic.h"
 
 #define BOARD_SIZE 8
-
-enum chess_player
-{
-    PLAYER_WHITE = 0,
-    PLAYER_BLACK = 1,
-};
-
-// Gets a lowercase string denoting the player.
-const char *player_string(enum chess_player player);
+#define PRINT_COORD(col, row) ('a' + (col)), ('1' + (8 - (row) - 1))
 
 enum chess_piece
 {
@@ -27,31 +17,24 @@ enum chess_piece
     PIECE_QUEEN = 4,
     PIECE_KING = 5,
 };
-
-// Gets a lowercase string denoting the piece type.
-const char *piece_string(enum chess_piece piece);
+enum chess_player
+{
+    PLAYER_WHITE = 0,
+    PLAYER_BLACK = 1,
+};
 
 struct square
 {
     bool has_piece;
     enum chess_piece piece;
     enum chess_player owner;
+    int col, row;
 };
 
-#define FILE_TO_COL(file) ((file) - 'a')
-
-#define RANK_TO_ROW(rank) (8 - ((rank) - '0'))
-
-#define SQUARE_TO_COORD(square, row, col) \
-    do                                    \
-    {                                     \
-        (col) = FILE_TO_COL((square)[0]); \
-        (row) = RANK_TO_ROW((square)[1]); \
-    } while (0)
-
-struct castling_rights {
-    bool white_kingside;   // O-O
-    bool white_queenside;  // O-O-O
+struct castling_rights
+{
+    bool white_kingside;  // O-O
+    bool white_queenside; // O-O-O
     bool black_kingside;
     bool black_queenside;
 };
@@ -61,7 +44,6 @@ struct chess_board
     enum chess_player next_move_player;
     struct square squares[BOARD_SIZE][BOARD_SIZE];
     struct castling_rights rights;
-    int ep_row, ep_col; // used for en passant
 };
 
 struct chess_move
@@ -69,23 +51,16 @@ struct chess_move
     enum chess_player player;
     enum chess_piece piece_type;
 
-    int8_t to_row, to_col;
-    int8_t from_row, from_col;
+    int to_row, to_col;
+    int from_row, from_col;
 
     bool is_capture;
-    bool is_en_passant;
-
     bool is_promotion;
     enum chess_piece promo_piece;
 
     bool is_castle;
     bool castle_kingside;
-
-    int8_t hint_from_row;
-    int8_t hint_from_col;
 };
-
-static inline int absolute_value_int(int value) { return (value < 0) ? -value : value; }
 
 // Initializes the state of the board for a new chess game.
 void board_initialize(struct chess_board *board);

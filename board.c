@@ -1,9 +1,42 @@
 #include "board.h"
 #include <stdio.h>
 
-// yo we gotta use static so we can internally link the functions
+//HELPER FUNCTIONS
+static inline int absint(int v)
+{
+    return (v < 0) ? -v : v;
+}
+const char *player_string(enum chess_player player)
+{
+    switch (player)
+    {
+    case PLAYER_WHITE:
+        return "white";
+    case PLAYER_BLACK:
+        return "black";
+    }
+    return "unknown";
+}
 
-static inline int absint(int v) { return (v < 0) ? -v : v; }
+const char *piece_string(enum chess_piece piece)
+{
+    switch (piece)
+    {
+    case PIECE_PAWN:
+        return "pawn";
+    case PIECE_KNIGHT:
+        return "knight";
+    case PIECE_BISHOP:
+        return "bishop";
+    case PIECE_ROOK:
+        return "rook";
+    case PIECE_QUEEN:
+        return "queen";
+    case PIECE_KING:
+        return "king";
+    }
+    return "unknown";
+}
 
 static inline bool straight_check(const struct chess_board *board, int from_row_index, int from_column_index, int to_row_index, int to_column_index)
 {
@@ -77,10 +110,10 @@ static inline bool diag_check(const struct chess_board *board, int from_row_inde
     return true;
 }
 
-static inline bool pawn_reach(const struct chess_board *board, int from_row_index, int from_column_index, int to_row_index, int to_column_index, enum chess_player mover)
+static inline bool pawn_reach(const struct chess_board *board, int from_row_index, int from_column_index, int to_row_index, int to_column_index, enum chess_player player)
 {
-    int forward_direction = (mover == PLAYER_WHITE) ? -1 : +1;
-    int start_row_index = (mover == PLAYER_WHITE) ? 6 : 1;
+    int forward_direction = (player == PLAYER_WHITE) ? -1 : +1;
+    int start_row_index = (player == PLAYER_WHITE) ? 6 : 1;
 
     int delta_row = to_row_index - from_row_index;
     int delta_col = to_column_index - from_column_index;
@@ -88,7 +121,7 @@ static inline bool pawn_reach(const struct chess_board *board, int from_row_inde
     if (delta_row == forward_direction && (delta_col == 1 || delta_col == -1))
     {
         const struct square *destination = &board->squares[to_row_index][to_column_index];
-        return destination->has_piece && destination->owner != mover;
+        return destination->has_piece && destination->owner != player;
     }
     if (delta_col == 0 && delta_row == forward_direction)
         return !board->squares[to_row_index][to_column_index].has_piece;
@@ -102,37 +135,7 @@ static inline bool pawn_reach(const struct chess_board *board, int from_row_inde
     return false;
 }
 
-const char *player_string(enum chess_player player)
-{
-    switch (player)
-    {
-    case PLAYER_WHITE:
-        return "white";
-    case PLAYER_BLACK:
-        return "black";
-    }
-    return "unknown";
-}
 
-const char *piece_string(enum chess_piece piece)
-{
-    switch (piece)
-    {
-    case PIECE_PAWN:
-        return "pawn";
-    case PIECE_KNIGHT:
-        return "knight";
-    case PIECE_BISHOP:
-        return "bishop";
-    case PIECE_ROOK:
-        return "rook";
-    case PIECE_QUEEN:
-        return "queen";
-    case PIECE_KING:
-        return "king";
-    }
-    return "unknown";
-}
 
 void board_initialize(struct chess_board *board)
 {
@@ -156,10 +159,10 @@ void board_initialize(struct chess_board *board)
     board->squares[0][7] = (struct square){true, PIECE_ROOK, PLAYER_BLACK};
 
     for (int col = 0; col < 8; col++)
+    {
         board->squares[1][col] = (struct square){true, PIECE_PAWN, PLAYER_BLACK};
-
-    for (int col = 0; col < 8; col++)
         board->squares[6][col] = (struct square){true, PIECE_PAWN, PLAYER_WHITE};
+    }
 
     board->squares[7][0] = (struct square){true, PIECE_ROOK, PLAYER_WHITE};
     board->squares[7][1] = (struct square){true, PIECE_KNIGHT, PLAYER_WHITE};
@@ -176,9 +179,6 @@ void board_initialize(struct chess_board *board)
     board->rights.white_queenside = true;
     board->rights.black_kingside = true;
     board->rights.black_queenside = true;
-
-    board->ep_row = -1;
-    board->ep_col = -1;
 }
 
 void board_complete_move(const struct chess_board *board, struct chess_move *move)
@@ -187,16 +187,15 @@ void board_complete_move(const struct chess_board *board, struct chess_move *mov
 
     if (move->to_row < 0 || move->to_row >= BOARD_SIZE || move->to_col < 0 || move->to_col >= BOARD_SIZE)
     {
-        panicf("illegal move: destination out of bounds\n");
+        panicf("move completion error: %s %s to %c%c\n", player_string(move->player), piece_string(move->piece_type), 'a' + move->to_col, '1' + (8 - move->to_row - 1));
     }
-    if (board->squares[move->to_row][move->to_col].has_piece &&
-        board->squares[move->to_row][move->to_col].owner == move->player)
+    if (board->squares[move->to_row][move->to_col].has_piece && board->squares[move->to_row][move->to_col].owner == move->player)
     {
-        panicf("illegal move: destination occupied by own piece\n");
+        panicf("move completion error: %s %s to %c%c\n", player_string(move->player), piece_string(move->piece_type), 'a' + move->to_col, '1' + (8 - move->to_row - 1));
     }
 
-    int candidate_from_rows[16];
-    int candidate_from_cols[16];
+    int candidate_rows[16];
+    int candidate_cols[16];
     int candidate_count = 0;
 
     for (int from_row = 0; from_row < BOARD_SIZE; ++from_row)
@@ -205,16 +204,17 @@ void board_complete_move(const struct chess_board *board, struct chess_move *mov
         {
             const struct square *source_square = &board->squares[from_row][from_col];
             if (!source_square->has_piece)
+            {
                 continue;
+            }
             if (source_square->owner != move->player)
+            {
                 continue;
+            }
             if (source_square->piece != move->piece_type)
+            {
                 continue;
-
-            if (move->hint_from_row >= 0 && from_row != move->hint_from_row)
-                continue;
-            if (move->hint_from_col >= 0 && from_col != move->hint_from_col)
-                continue;
+            }
 
             int delta_row = move->to_row - from_row;
             int delta_col = move->to_col - from_col;
@@ -259,10 +259,10 @@ void board_complete_move(const struct chess_board *board, struct chess_move *mov
             if (!can_reach)
                 continue;
 
-            if (candidate_count < (int)(sizeof(candidate_from_rows) / sizeof(candidate_from_rows[0])))
+            if (candidate_count < (int)(sizeof(candidate_rows) / sizeof(candidate_rows[0])))
             {
-                candidate_from_rows[candidate_count] = from_row;
-                candidate_from_cols[candidate_count] = from_col;
+                candidate_rows[candidate_count] = from_row;
+                candidate_cols[candidate_count] = from_col;
                 candidate_count++;
             }
         }
@@ -270,40 +270,81 @@ void board_complete_move(const struct chess_board *board, struct chess_move *mov
 
     if (candidate_count == 0)
     {
-        panicf("illegal move: no %s can reach the destination\n", piece_string(move->piece_type));
+        panicf("move completion error: %s %s to %c%c\n", player_string(move->player), piece_string(move->piece_type), 'a' + move->to_col, '1' + (8 - move->to_row - 1));
     }
-    if (candidate_count > 1)
+    else if (candidate_count > 1)
     {
-        panicf("parse error: ambiguous move; provide from-row/from-col hints\n");
+        panicf("parse error: ambiguous move\n");
     }
 
-    move->from_row = candidate_from_rows[0];
-    move->from_col = candidate_from_cols[0];
+    move->from_row = candidate_rows[0];
+    move->from_col = candidate_cols[0];
+
     move->is_capture = board->squares[move->to_row][move->to_col].has_piece && board->squares[move->to_row][move->to_col].owner != move->player;
+    
+    if (move->piece_type == PIECE_PAWN)
+    {
+        if (move->player == PLAYER_WHITE && move->to_row == 7)
+            move->is_promotion = true;
+        else if (move->player == PLAYER_BLACK && move->to_row == 0)
+            move->is_promotion = true;
+        else
+            move->is_promotion = false;
+    }
+    else
+    {
+        move->is_promotion = false;
+    }
 }
 
 void board_apply_move(struct chess_board *board, const struct chess_move *move)
 {
     if (move->from_row < 0 || move->from_row >= BOARD_SIZE || move->from_col < 0 || move->from_col >= BOARD_SIZE || move->to_row < 0 || move->to_row >= BOARD_SIZE || move->to_col < 0 || move->to_col >= BOARD_SIZE)
     {
-        panicf("illegal move: source or destination out of bounds\n");
+        panicf("move completion error: %s %s to %c%c\n", player_string(move->player), piece_string(move->piece_type), 'a' + move->to_col, '1' + (8 - move->to_row - 1));
     }
 
     struct square *src = &board->squares[move->from_row][move->from_col];
     struct square *dst = &board->squares[move->to_row][move->to_col];
 
-    if (!src->has_piece || src->owner != move->player || src->piece != move->piece_type)
+    if (!src->has_piece || src->owner != move->player || src->piece != move->piece_type) // if our source square does not have a piece or the owner if the source square is not the current player or the source piece does not equal the move piece type
     {
-        panicf("illegal move: source square does not contain the expected piece\n");
+        panicf("move completion error: %s %s to %c%c\n", player_string(move->player), piece_string(move->piece_type), 'a' + move->to_col, '1' + (8 - move->to_row - 1));
     }
 
     *dst = *src;
+
+    if (move->piece_type == PIECE_KING && !move->is_castle) // castle?
+    {
+        if (move->player == PLAYER_WHITE)
+        {
+            board->rights.white_kingside = false;
+            board->rights.white_queenside = false;
+        }
+        else if (move->player == PLAYER_BLACK)
+        {
+            board->rights.black_kingside = false;
+            board->rights.black_queenside = false;
+        }
+    }
+
+    if (move->is_capture)
+    {
+        printf("move completion: %s %s from %c%c captures on %c%c\n", player_string(move->player), piece_string(move->piece_type), 'a' + move->from_col, '1' + (8 - move->from_row - 1), 'a' + move->to_col, '1' + (8 - move->to_row - 1));
+    }
+    else
+    {
+        printf("move completion: %s %s from %c%c to %c%c\n", player_string(move->player), piece_string(move->piece_type), 'a' + move->from_col, '1' + (8 - move->from_row - 1), 'a' + move->to_col, '1' + (8 - move->to_row - 1));
+    }
+
+    if (move->is_promotion)
+    {
+        dst->piece = move->promo_piece;
+    }
+
     src->has_piece = false;
 
     board->next_move_player = (board->next_move_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
-
-    board->ep_row = -1;
-    board->ep_col = -1;
 }
 
 void board_summarize(const struct chess_board *board)
