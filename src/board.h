@@ -81,6 +81,6 @@ bool board_straight_check(const struct chess_board *board, int from_row, int fro
 bool board_can_castle(const struct chess_board *board, enum chess_player player, bool kingside);
 bool board_in_stalemate(const struct chess_board * board, enum chess_player player);
 bool board_is_legal_move(const struct chess_board *board, int from_row, int from_col, int to_row, int to_col);
-// bool suggest_move(const struct chess_board *board, struct chess_move *best_move);
+bool board_recommend_move(const struct chess_board *board, struct chess_move *best_move);
 
 #endif
