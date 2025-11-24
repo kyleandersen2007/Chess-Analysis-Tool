@@ -1,3 +1,0 @@
-/home/kyle/coding/c/143-Project/build/CMakeFiles/chess-analysis.dir
-/home/kyle/coding/c/143-Project/build/CMakeFiles/edit_cache.dir
-/home/kyle/coding/c/143-Project/build/CMakeFiles/rebuild_cache.dir

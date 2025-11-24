@@ -1,1 +1,0 @@
-/usr/bin/cc "CMakeFiles/chess-analysis.dir/main.c.o" "CMakeFiles/chess-analysis.dir/board.c.o" "CMakeFiles/chess-analysis.dir/parser.c.o" "CMakeFiles/chess-analysis.dir/panic.c.o" -o chess-analysis  -lm 
