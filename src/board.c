@@ -120,7 +120,7 @@ bool board_diagonal_check(const struct chess_board *board, int from_row, int fro
     return true;
 }
 
-bool board_can_pawn_reach(const struct chess_board *board, int from_row, int from_col, int to_row, int to_col, enum chess_player player)
+bool board_can_pawn_reach(const enum chess_player player, const struct chess_board *board, int from_row, int from_col, int to_row, int to_col)
 {
     int forward_direction = (player == PLAYER_WHITE) ? -1 : +1;
     int start_row_index = (player == PLAYER_WHITE) ? 6 : 1;
@@ -155,7 +155,8 @@ bool board_is_legal_move(const struct chess_board *board, int from_row, int from
     }
 
     const struct square *src = &board->squares[from_row][from_col]; // represent our source square
-    if (!src->has_piece)                                            // if we are trying to move from a square with no piece, return false
+
+    if (!src->has_piece) // if we are trying to move from a square with no piece, return false
     {
         return false;
     }
@@ -185,7 +186,7 @@ bool board_is_legal_move(const struct chess_board *board, int from_row, int from
     switch (piece)
     {
     case PIECE_PAWN:
-        is_legal = board_can_pawn_reach(board, from_row, from_col, to_row, to_col, player);
+        is_legal = board_can_pawn_reach(player, board, from_row, from_col, to_row, to_col);
         break;
 
     case PIECE_KNIGHT:
@@ -218,13 +219,13 @@ bool board_is_legal_move(const struct chess_board *board, int from_row, int from
     return is_legal;
 }
 
-bool board_in_check(const struct chess_board *board, enum chess_player player)
+bool board_in_check(const struct chess_board *board)
 {
     for (int row = 0; row < BOARD_SIZE; row++)
     {
         for (int col = 0; col < BOARD_SIZE; col++)
         {
-            if (board->squares[row][col].has_piece && board->squares[row][col].owner == player && board->squares[row][col].piece == PIECE_KING) // if the square holds the current player's king
+            if (board->squares[row][col].has_piece && board->squares[row][col].owner == board->next_move_player && board->squares[row][col].piece == PIECE_KING) // if the square holds the current player's king
             {
                 // store the king's position
                 int king_row = row;
@@ -239,7 +240,7 @@ bool board_in_check(const struct chess_board *board, enum chess_player player)
                         {
                             continue;
                         }
-                        if (source_square->owner == player) // skip all of our own pieces THUS we are checking all of the opponent's pieces to see if they can legally "take" our king
+                        if (source_square->owner == board->next_move_player) // skip all of our own pieces THUS we are checking all of the opponent's pieces to see if they can legally "take" our king
                         {
                             continue;
                         }
@@ -255,9 +256,9 @@ bool board_in_check(const struct chess_board *board, enum chess_player player)
     return false;
 }
 
-bool board_in_checkmate(const struct chess_board *board, enum chess_player player)
+bool board_in_checkmate(const struct chess_board *board)
 {
-    if (!board_in_check(board, player)) // this is our base case: if we are not in check, we cannot be in checkmate
+    if (!board_in_check(board))
     {
         return false;
     }
@@ -268,7 +269,7 @@ bool board_in_checkmate(const struct chess_board *board, enum chess_player playe
         {
             const struct square *src = &board->squares[from_row][from_col];
 
-            if (!src->has_piece || src->owner != player) // if the source square does not have a piece or the piece does not belong to the current player then skip it
+            if (!src->has_piece || src->owner != board->next_move_player)
             {
                 continue;
             }
@@ -277,39 +278,45 @@ bool board_in_checkmate(const struct chess_board *board, enum chess_player playe
             {
                 for (int to_col = 0; to_col < BOARD_SIZE; to_col++)
                 {
-                    const struct square *dst = &board->squares[to_row][to_col]; // get our destination square
-                    if (dst->has_piece && dst->owner == player)                 // if our destination has our OWN piece, we can't move there.
+                    const struct square *dst = &board->squares[to_row][to_col];
+
+                    if (dst->has_piece && dst->owner == board->next_move_player)
                     {
                         continue;
                     }
 
-                    if (!board_is_legal_move(board, from_row, from_col, to_row, to_col)) // if the move is not legal, skip it
+                    if (!board_is_legal_move(board, from_row, from_col, to_row, to_col))
                     {
                         continue;
                     }
 
-                    // we create a test move to simulate a potential move to see if we get out of check
-                    struct chess_move test_move;
+                    struct chess_move test_move = {0};
 
-                    test_move.player = player,
-                    test_move.piece_type = src->piece,
+                    test_move.player = board->next_move_player;
+                    test_move.piece_type = src->piece;
                     test_move.from_row = from_row;
                     test_move.from_col = from_col;
                     test_move.to_row = to_row;
                     test_move.to_col = to_col;
-                    test_move.is_capture = (dst->has_piece && dst->owner != player);
+                    test_move.is_capture = (dst->has_piece && dst->owner != board->next_move_player);
+                    test_move.is_promotion = false;
 
                     if (test_move.piece_type == PIECE_PAWN)
                     {
-                        if ((player == PLAYER_WHITE && to_row == 0) || (player == PLAYER_BLACK && to_row == 7)) // if the pawn reaches the last rank promote it
+                        if ((board->next_move_player == PLAYER_WHITE && to_row == 0) ||
+                            (board->next_move_player == PLAYER_BLACK && to_row == 7))
                         {
                             test_move.is_promotion = true;
+                            test_move.promo_piece = PIECE_QUEEN;
                         }
                     }
 
-                    struct chess_board test = *board; // make a test board to simulate the move
+                    struct chess_board test = *board;
                     board_apply_move(&test, &test_move);
-                    if (!board_in_check(&test, player)) // if after applying the move we are no longer in check, then we are not in checkmate
+
+                    test.next_move_player = test_move.player;
+
+                    if (!board_in_check(&test))
                     {
                         return false;
                     }
@@ -321,9 +328,9 @@ bool board_in_checkmate(const struct chess_board *board, enum chess_player playe
     return true;
 }
 
-bool board_in_stalemate(const struct chess_board *board, enum chess_player player)
+bool board_in_stalemate(const struct chess_board *board)
 {
-    if (board_in_check(board, player)) // if we are in check, we cannot be in stalemate
+    if (board_in_check(board))
     {
         return false;
     }
@@ -331,8 +338,8 @@ bool board_in_stalemate(const struct chess_board *board, enum chess_player playe
     {
         for (int from_col = 0; from_col < BOARD_SIZE; from_col++)
         {
-            const struct square *src = &board->squares[from_row][from_col]; // get our source square
-            if (!src->has_piece || src->owner != player)                    // if the source square does not have a piece or the piece does not belong to the current player then skip it
+            const struct square *src = &board->squares[from_row][from_col];
+            if (!src->has_piece || src->owner != board->next_move_player)
             {
                 continue;
             }
@@ -341,100 +348,120 @@ bool board_in_stalemate(const struct chess_board *board, enum chess_player playe
             {
                 for (int to_col = 0; to_col < BOARD_SIZE; to_col++)
                 {
-                    const struct square *dst = &board->squares[to_row][to_col]; // get our destination square
-                    if (dst->has_piece && dst->owner == player)                 // if our destination has our OWN piece, we can't move there.
+                    const struct square *dst = &board->squares[to_row][to_col];
+                    if (dst->has_piece && dst->owner == board->next_move_player)
                     {
                         continue;
                     }
 
-                    if (!board_is_legal_move(board, from_row, from_col, to_row, to_col)) // if the move is not legal, skip it
+                    if (!board_is_legal_move(board, from_row, from_col, to_row, to_col))
                     {
                         continue;
                     }
 
-                    // we create a test move to simulate a potential move to see if we get out of check (same logic as checkmate)
-                    struct chess_move test_move;
+                    struct chess_move test_move = {0};
 
-                    test_move.player = player,
-                    test_move.piece_type = src->piece,
+                    test_move.player = board->next_move_player;
+                    test_move.piece_type = src->piece;
                     test_move.from_row = from_row;
                     test_move.from_col = from_col;
                     test_move.to_row = to_row;
                     test_move.to_col = to_col;
-                    test_move.is_capture = (dst->has_piece && dst->owner != player);
+                    test_move.is_capture = (dst->has_piece && dst->owner != board->next_move_player);
+                    test_move.is_promotion = false;
 
                     if (test_move.piece_type == PIECE_PAWN)
                     {
-                        if ((player == PLAYER_WHITE && to_row == 0) || (player == PLAYER_BLACK && to_row == 7))
+                        if ((board->next_move_player == PLAYER_WHITE && to_row == 0) ||
+                            (board->next_move_player == PLAYER_BLACK && to_row == 7))
                         {
                             test_move.is_promotion = true;
+                            test_move.promo_piece = PIECE_QUEEN;
                         }
                     }
 
                     struct chess_board test = *board;
                     board_apply_move(&test, &test_move);
-                    if (board_in_check(&test, player))
+                    test.next_move_player = test_move.player;
+
+                    if (!board_in_check(&test))
                     {
-                        return true;
+                        return false;
                     }
                 }
             }
         }
     }
-    return false;
+    return true;
 }
 
-bool board_can_castle(const struct chess_board *board, enum chess_player player, bool kingside)
+bool board_can_castle(const struct chess_board *board, bool kingside)
 {
-    int row = (player == PLAYER_WHITE) ? 7 : 0; // determine which row we are on based on player
+    int row = (board->next_move_player == PLAYER_WHITE) ? 7 : 0;
 
-    if (player == PLAYER_WHITE)
+    // Check castling rights
+    if (board->next_move_player == PLAYER_WHITE)
     {
         if (kingside && !board->rights.white_kingside)
-        {
             return false;
-        }
         if (!kingside && !board->rights.white_queenside)
+            return false;
+    }
+    else
+    {
+        if (kingside && !board->rights.black_kingside)
+            return false;
+        if (!kingside && !board->rights.black_queenside)
+            return false;
+    }
+
+    int king_from_col = 4;
+    int rook_col = kingside ? 7 : 0;
+    int king_to_col = kingside ? 6 : 2;
+
+    // Ensure king and rook are present and belong to the side to move
+    const struct square *king_square = &board->squares[row][king_from_col];
+    const struct square *rook_square = &board->squares[row][rook_col];
+
+    if (!king_square->has_piece || king_square->owner != board->next_move_player || king_square->piece != PIECE_KING)
+    {
+        return false;
+    }
+    if (!rook_square->has_piece || rook_square->owner != board->next_move_player || rook_square->piece != PIECE_ROOK)
+    {
+        return false;
+    }
+    if (kingside)
+    {
+        if (board->squares[row][5].has_piece || board->squares[row][6].has_piece)
         {
             return false;
         }
     }
     else
     {
-        if (kingside && !board->rights.black_kingside)
-        {
-            return false;
-        }
-        if (!kingside && !board->rights.black_queenside)
+        if (board->squares[row][1].has_piece || board->squares[row][2].has_piece || board->squares[row][3].has_piece)
         {
             return false;
         }
     }
 
-    int king_from_col = 4;              // the king always starts on column 4
-    int king_to_col = kingside ? 6 : 2; // determine where the king is trying to go
-
-    int step = (king_to_col > king_from_col) ? 1 : -1;
-    for (int c = king_from_col + step; c != king_to_col; c += step) // check the squares between the king and the rook
+    if (board_in_check(board))
     {
-        if (board->squares[row][c].has_piece)
-        {
-            return false; // if there is a piece between the king and the rook, castling is not allowed
-        }
-    }
-
-    if (board_in_check(board, player)) // if the king is currently in check, castling is not allowed
         return false;
+    }
 
     struct chess_board test_board = *board;
-    struct chess_move test_move;
-    test_move.player = player;
+    struct chess_move test_move = {0};
+    test_move.player = board->next_move_player;
     test_move.piece_type = PIECE_KING;
     test_move.is_castle = false;
     test_move.is_capture = false;
     test_move.is_promotion = false;
 
+    int step = (king_to_col > king_from_col) ? 1 : -1;
     int king_col = king_from_col;
+
     while (king_col != king_to_col)
     {
         int next_col = king_col + step;
@@ -444,12 +471,16 @@ bool board_can_castle(const struct chess_board *board, enum chess_player player,
         test_move.to_row = row;
         test_move.to_col = next_col;
 
-        board_apply_move(&test_board, &test_move); // keep checking moves until we finally castle
+        board_apply_move(&test_board, &test_move);
+
+        test_board.next_move_player = test_move.player;
 
         king_col = next_col;
 
-        if (board_in_check(&test_board, player))
+        if (board_in_check(&test_board))
+        {
             return false;
+        }
     }
 
     return true;
@@ -655,22 +686,196 @@ void board_apply_move(struct chess_board *board, const struct chess_move *move)
     board->next_move_player = (board->next_move_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE; // switch the next move player
 }
 
+void board_recommend_move(const struct chess_board *board, struct chess_move *recommended_move)
+{
+    bool can_make_safe_move = false;
+    struct chess_move safe_move = {0};
+
+    bool legal_move_exists = false;
+    struct chess_move legal_move = {0};
+
+    for (int from_row = 0; from_row < BOARD_SIZE; from_row++)
+    {
+        for (int from_col = 0; from_col < BOARD_SIZE; from_col++)
+        {
+            const struct square *src = &board->squares[from_row][from_col];
+            if (!src->has_piece || src->owner != board->next_move_player)
+            {
+                continue;
+            }
+
+            for (int to_row = 0; to_row < BOARD_SIZE; to_row++)
+            {
+                for (int to_col = 0; to_col < BOARD_SIZE; to_col++)
+                {
+                    const struct square *dst = &board->squares[to_row][to_col];
+                    if (dst->has_piece && dst->owner == board->next_move_player)
+                    {
+                        continue;
+                    }
+
+                    if (!board_is_legal_move(board, from_row, from_col, to_row, to_col))
+                    {
+                        continue;
+                    }
+
+                    struct chess_move move = {0};
+
+                    move.player = board->next_move_player;
+                    move.piece_type = src->piece;
+                    move.from_row = from_row;
+                    move.from_col = from_col;
+                    move.to_row = to_row;
+                    move.to_col = to_col;
+                    move.is_capture = (dst->has_piece && dst->owner != board->next_move_player);
+                    move.is_castle = false;
+                    move.is_promotion = false;
+
+                    if (move.piece_type == PIECE_PAWN)
+                    {
+                        if ((move.player == PLAYER_WHITE && to_row == 0) || (move.player == PLAYER_BLACK && to_row == 7))
+                        {
+                            move.is_promotion = true;
+                            move.promo_piece = PIECE_QUEEN;
+                        }
+                    }
+
+                    struct chess_board board_copy = *board;
+                    board_apply_move(&board_copy, &move);
+
+                    board_copy.next_move_player = move.player;
+
+                    if (board_in_check(&board_copy))
+                    {
+                        continue;
+                    }
+
+                    if (!legal_move_exists)
+                    {
+                        legal_move = move;
+                        legal_move_exists = true;
+                    }
+
+                    board_copy.next_move_player = (move.player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
+                    if (board_in_checkmate(&board_copy))
+                    {
+                        *recommended_move = move;
+                        return;
+                    }
+
+                    bool enemy_mate = false;
+                    struct chess_board enemy_board = board_copy;
+
+                    for (int enemy_from_row = 0; enemy_from_row < BOARD_SIZE && !enemy_mate; enemy_from_row++)
+                    {
+                        for (int enemy_from_column = 0; enemy_from_column < BOARD_SIZE && !enemy_mate; enemy_from_column++)
+                        {
+                            const struct square *enemy_src = &enemy_board.squares[enemy_from_row][enemy_from_column];
+                            if (!enemy_src->has_piece || enemy_src->owner != enemy_board.next_move_player)
+                            {
+                                continue;
+                            }
+
+                            for (int enemy_to_row = 0; enemy_to_row < BOARD_SIZE && !enemy_mate; enemy_to_row++)
+                            {
+                                for (int enemy_to_column = 0; enemy_to_column < BOARD_SIZE && !enemy_mate; enemy_to_column++)
+                                {
+                                    const struct square *enemy_dst = &enemy_board.squares[enemy_to_row][enemy_to_column];
+
+                                    if (enemy_dst->has_piece && enemy_dst->owner == enemy_board.next_move_player)
+                                    {
+                                        continue;
+                                    }
+
+                                    if (!board_is_legal_move(&enemy_board, enemy_from_row, enemy_from_column, enemy_to_row, enemy_to_column))
+                                    {
+                                        continue;
+                                    }
+
+                                    struct chess_move enemy_move = {0};
+
+                                    enemy_move.player = enemy_board.next_move_player;
+                                    enemy_move.piece_type = enemy_src->piece;
+                                    enemy_move.from_row = enemy_from_row;
+                                    enemy_move.from_col = enemy_from_column;
+                                    enemy_move.to_row = enemy_to_row;
+                                    enemy_move.to_col = enemy_to_column;
+                                    enemy_move.is_capture = (enemy_dst->has_piece && enemy_dst->owner != enemy_board.next_move_player);
+                                    enemy_move.is_castle = false;
+                                    enemy_move.is_promotion = false;
+
+                                    if (enemy_move.piece_type == PIECE_PAWN)
+                                    {
+                                        if ((enemy_move.player == PLAYER_WHITE && enemy_to_row == 0) || (enemy_move.player == PLAYER_BLACK && enemy_to_row == 7))
+                                        {
+                                            enemy_move.is_promotion = true;
+                                            enemy_move.promo_piece = PIECE_QUEEN;
+                                        }
+                                    }
+
+                                    struct chess_board reply = enemy_board;
+                                    board_apply_move(&reply, &enemy_move);
+
+                                    reply.next_move_player = enemy_move.player;
+                                    if (board_in_check(&reply))
+                                    {
+                                        continue;
+                                    }
+
+                                    reply.next_move_player = (enemy_move.player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
+
+                                    if (board_in_checkmate(&reply))
+                                    {
+                                        enemy_mate = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!enemy_mate && !can_make_safe_move)
+                    {
+                        safe_move = move;
+                        can_make_safe_move = true;
+                    }
+                }
+            }
+        }
+    }
+
+    if (can_make_safe_move)
+    {
+        *recommended_move = safe_move;
+    }
+    else if (legal_move_exists)
+    {
+        *recommended_move = legal_move;
+    }
+    else
+    {
+        panicf("move completion error: no legal moves\n");
+    }
+}
+
 void board_summarize(const struct chess_board *board)
 {
-    if (board_in_checkmate(board, board->next_move_player))
+    if (board_in_checkmate(board))
     {
-        printf("%s wins by checkmate\n", player_string((board->next_move_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE));
+        printf("%s wins by checkmate\n", player_string(board->next_move_player));
     }
-    else if (board_in_stalemate(board, board->next_move_player))
+    else if (board_in_stalemate(board))
     {
         printf("stalemate\n");
     }
-    else if (board_in_check(board, (board->next_move_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE))
+    else if (board_in_check(board))
     {
-        printf("%s is in check\n", player_string((board->next_move_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE));
+        printf("%s is in check\n", player_string(board->next_move_player));
     }
     else
     {
         printf("game incomplete\n");
+        struct chess_move recommended_move;
+        board_recommend_move(board, &recommended_move);
+        printf("suggest: %s %s from %c%c to %c%c\n", player_string(recommended_move.player), piece_string(recommended_move.piece_type), 'a' + recommended_move.from_col, '1' + (8 - recommended_move.from_row - 1), 'a' + recommended_move.to_col, '1' + (8 - recommended_move.to_row - 1));
     }
 }
