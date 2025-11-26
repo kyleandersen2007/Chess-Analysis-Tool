@@ -32,6 +32,47 @@ const char *piece_string(enum chess_piece piece)
     return "unknown";
 }
 
+const char *unicode_piece(enum chess_piece piece, enum chess_player owner)
+{
+    if (owner == PLAYER_WHITE)
+    {
+        switch (piece)
+        {
+        case PIECE_KING:
+            return "♔";
+        case PIECE_QUEEN:
+            return "♕";
+        case PIECE_ROOK:
+            return "♖";
+        case PIECE_BISHOP:
+            return "♗";
+        case PIECE_KNIGHT:
+            return "♘";
+        case PIECE_PAWN:
+            return "♙";
+        }
+    }
+    else
+    {
+        switch (piece)
+        {
+        case PIECE_KING:
+            return "♚";
+        case PIECE_QUEEN:
+            return "♛";
+        case PIECE_ROOK:
+            return "♜";
+        case PIECE_BISHOP:
+            return "♝";
+        case PIECE_KNIGHT:
+            return "♞";
+        case PIECE_PAWN:
+            return "♟";
+        }
+    }
+    return ".";
+}
+
 int get_absolute_value(int value)
 {
     return (value < 0) ? -value : value;
@@ -595,6 +636,15 @@ void board_complete_move(const struct chess_board *board, struct chess_move *mov
                 continue;
             }
 
+            if (move->from_row != -1 && move->from_row != from_row)
+            {
+                continue;
+            }
+            if (move->from_col != -1 && move->from_col != from_col)
+            {
+                continue;
+            }
+
             if (!board_is_legal_move(board, from_row, from_col, move->to_row, move->to_col))
             {
                 continue;
@@ -641,10 +691,10 @@ void board_complete_move(const struct chess_board *board, struct chess_move *mov
 void board_apply_move(struct chess_board *board, const struct chess_move *move)
 {
     // if the move is out of bounds we panic
-    if (board_in_check(board))
-    {
-        panicf("illegal move: %s %s to %c%c\n", player_string(move->player), piece_string(move->piece_type), 'a' + move->to_col, '1' + (8 - move->to_row - 1));
-    }
+    // if (board_in_check(board))
+    // {
+    //     panicf("illegal move: %s %s to %c%c\n", player_string(move->player), piece_string(move->piece_type), 'a' + move->to_col, '1' + (8 - move->to_row - 1));
+    // }
     if (move->from_row < 0 || move->from_row >= BOARD_SIZE || move->from_col < 0 || move->from_col >= BOARD_SIZE || move->to_row < 0 || move->to_row >= BOARD_SIZE || move->to_col < 0 || move->to_col >= BOARD_SIZE)
     {
         panicf("move completion error: %s %s to %c%c\n", player_string(move->player), piece_string(move->piece_type), 'a' + move->to_col, '1' + (8 - move->to_row - 1));
@@ -955,38 +1005,43 @@ void board_print(const struct chess_board *board)
 
         for (int col = 0; col < 8; col++)
         {
-            struct square sq = board->squares[row][col];
-            char c = '.';
+            const struct square sq = board->squares[row][col];
 
             if (sq.has_piece)
             {
-                switch (sq.piece)
+                const char *p = ".";
+
+                if (sq.owner == PLAYER_BLACK)
                 {
-                case PIECE_PAWN:
-                    c = 'p';
-                    break;
-                case PIECE_KNIGHT:
-                    c = 'n';
-                    break;
-                case PIECE_BISHOP:
-                    c = 'b';
-                    break;
-                case PIECE_ROOK:
-                    c = 'r';
-                    break;
-                case PIECE_QUEEN:
-                    c = 'q';
-                    break;
-                case PIECE_KING:
-                    c = 'k';
-                    break;
+                    switch (sq.piece)
+                    {
+                        case PIECE_KING:   p = "♔"; break;
+                        case PIECE_QUEEN:  p = "♕"; break;
+                        case PIECE_ROOK:   p = "♖"; break;
+                        case PIECE_BISHOP: p = "♗"; break;
+                        case PIECE_KNIGHT: p = "♘"; break;
+                        case PIECE_PAWN:   p = "♙"; break;
+                    }
+                }
+                else
+                {
+                    switch (sq.piece)
+                    {
+                        case PIECE_KING:   p = "♚"; break;
+                        case PIECE_QUEEN:  p = "♛"; break;
+                        case PIECE_ROOK:   p = "♜"; break;
+                        case PIECE_BISHOP: p = "♝"; break;
+                        case PIECE_KNIGHT: p = "♞"; break;
+                        case PIECE_PAWN:   p = "♟"; break;
+                    }
                 }
 
-                if (sq.owner == PLAYER_WHITE)
-                    c = c - 'a' + 'A';
+                printf("%s ", p);
             }
-
-            printf("%c ", c);
+            else
+            {
+                printf(". ");
+            }
         }
 
         printf("|%d\n", 8 - row);
@@ -1001,7 +1056,7 @@ void board_summarize(const struct chess_board *board)
     board_print(board);
     if (board_in_checkmate(board))
     {
-        printf("%s wins by checkmate\n", player_string(board->next_move_player));
+        printf("%s wins by checkmate\n", player_string(board->next_move_player ? PLAYER_BLACK : PLAYER_WHITE));
     }
     else if (board_in_stalemate(board))
     {
