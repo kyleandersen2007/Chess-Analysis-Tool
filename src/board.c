@@ -181,7 +181,7 @@ bool board_can_pawn_reach(const enum chess_player player, const struct chess_boa
 
     if (delta_col == 0 && delta_row == 2 * forward_direction && from_row == start_row_index)
     {
-        int intermediate_row = from_row + forward_direction;                                                       // the row the pawn jumps over (only used for the initial move)
+        int intermediate_row = from_row + forward_direction;                                                   // the row the pawn jumps over (only used for the initial move)
         return !board->squares[intermediate_row][from_col].has_piece && !board->squares[to_row][to_col].has_piece; // both squares must be empty
     }
 
@@ -808,15 +808,69 @@ int board_score_move(const struct chess_board *board, const struct chess_move *m
 
 void board_recommend_move(const struct chess_board *board, struct chess_move *recommended_move)
 {
-    bool can_make_safe_move = false;
+    //the difference between a safe move and a legal move is that a safe move is legal and cannot force the player into checkmate on the next turn
+    bool can_make_safe_move = false; // flag to track if we can make a safe move
     struct chess_move safe_move = {0};
 
-    bool legal_move_exists = false;
+    bool legal_move_exists = false; // flag we use as a fallback if no checkmate move is found
     struct chess_move legal_move = {0};
 
     int score_legal = -100000;
     int best_safe_score = -100000;
+
+    // try castling moves explicitly
+    for (int side = 0; side < 2; side++)
+    {
+        bool kingside = (side == 0);
+        if (!board_can_castle(board, kingside))
+        {
+            continue;
+        }
+
+        struct chess_move move = {0};
+        move.player = board->next_move_player;
+        move.piece_type = PIECE_KING;
+        move.is_castle = true;
+        move.castle_kingside = kingside;
+        move.is_capture = false;
+        move.is_promotion = false;
+
+        struct chess_board castle_board_copy = *board;
+        board_complete_move(&castle_board_copy, &move);
+        board_apply_move(&castle_board_copy, &move);
+
+        castle_board_copy.next_move_player = move.player;
+        if (board_in_check(&castle_board_copy))
+        {
+            continue;
+        }
+
+        int current_move_score = board_score_move(board, &move);
+
+        if (!legal_move_exists || current_move_score > score_legal)
+        {
+            score_legal = current_move_score;
+            legal_move = move;
+            legal_move_exists = true;
+        }
+
+        castle_board_copy.next_move_player = (move.player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
+        if (board_in_checkmate(&castle_board_copy))
+        {
+            *recommended_move = move;
+            return;
+        }
+
+        if (!can_make_safe_move || current_move_score > best_safe_score)
+        {
+            can_make_safe_move = true;
+            best_safe_score = current_move_score;
+            safe_move = move;
+        }
+    }
+
     // function is o(n^8) but whatever for now
+    // MAIN SEARCH
     for (int from_row = 0; from_row < BOARD_SIZE; from_row++)
     {
         for (int from_col = 0; from_col < BOARD_SIZE; from_col++)
@@ -960,7 +1014,7 @@ void board_recommend_move(const struct chess_board *board, struct chess_move *re
 
                     if (!enemy_mate)
                     {
-                        if (!can_make_safe_move || current_move_score > best_safe_score)
+                        if (!can_make_safe_move || current_move_score > best_safe_score) // !can_make_safe_move is for the first safe move we find
                         {
                             can_make_safe_move = true;
                             best_safe_score = current_move_score;
@@ -1072,8 +1126,11 @@ void board_summarize(const struct chess_board *board)
     board_print(board);
     if (board_in_checkmate(board))
     {
-        printf("%s wins by checkmate\n", player_string(board->next_move_player ? PLAYER_BLACK : PLAYER_WHITE));
+        enum chess_player loser = board->next_move_player;
+        enum chess_player winner = (loser == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
+        printf("%s wins by checkmate\n", player_string(winner));
     }
+
     else if (board_in_stalemate(board))
     {
         printf("draw by stalemate\n");
