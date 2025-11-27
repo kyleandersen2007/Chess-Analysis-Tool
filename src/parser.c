@@ -5,89 +5,210 @@
 bool parse_move(struct chess_move *move)
 {
     char c;
-
-    // Get the first character of the move, ignoring any initial spaces.
     do
     {
         c = getc(stdin);
+        if (c == EOF)
+            return false;
     } while (c == ' ');
 
-    // Check if we are at the end of input.
     if (c == '\n' || c == '\r')
         return false;
 
-    char buf[16]; // Buffer to hold the move string
+    char buf[32];
     int len = 0;
 
-    // Add the first character we already read
-    buf[len++] = c;
-
-    // Read the rest of the characters until a space or newline
-    while (1) {
-        c = getc(stdin);
-        if (c == ' ' || c == '\n' || c == '\r' || c == EOF) {
-            // Put the character back if it's not a space (so the next call can handle it if needed)
-            // Actually for now, just breaking is fine as we handle spaces at start of next call
-            break; 
-        }
-        if (len < 15) {
-            buf[len++] = c;
-        }
+    if (c != ' ' && c != '\n' && c != '\r')
+    {
+        buf[len++] = c;
     }
-    buf[len] = '\0'; // Null-terminate the string so it's a valid C string
-    
-// Reset move structure
+
+    while (1)
+    {
+        c = getc(stdin);
+        if (c == EOF || c == '\n' || c == '\r')
+            break;
+        if (c == ' ')
+            continue;
+        if (len < (int)(sizeof(buf) - 1))
+            buf[len++] = c;
+    }
+    buf[len] = '\0';
+
+    if (len == 0)
+        return false;
+
+    move->is_castle = false;
+    move->castle_kingside = false;
+    move->is_capture = false;
+    move->is_promotion = false;
+    move->promo_piece = PIECE_QUEEN;
     move->from_row = -1;
     move->from_col = -1;
     move->to_row = -1;
     move->to_col = -1;
-    move->is_capture = false;
-    move->is_promotion = false;
-    move->is_castle = false;       // <--- CRITICAL
-    move->piece_type = PIECE_PAWN;
 
-    // Check for Castling
-    if (buf[0] == '0') { // Starts with 0
-        move->piece_type = PIECE_KING; // King is the one moving
-        move->is_castle = true;
-
-        if (len == 3 && buf[1] == '-' && buf[2] == '0') {
-            move->castle_kingside = true; // 0-0
-            return true;
-        } else if (len == 5 && buf[1] == '-' && buf[2] == '0' && buf[3] == '-' && buf[4] == '0') {
-            move->castle_kingside = false; // 0-0-0
-            return true;
-        } else {
-            // Invalid castle string
-             panicf("parse error: invalid castle syntax '%s'\n", buf);
+    if (buf[0] == 'O')
+    {
+        if (buf[1] == '-' && buf[2] == 'O' && buf[3] == '\0')
+        {
+            move->is_castle = true;
+            move->castle_kingside = true;
         }
-    }
-    // 1. Identify the Piece
-    if (buf[0] >= 'A' && buf[0] <= 'Z') { // Is it uppercase?
-        switch (buf[0]) {
-            case 'N': move->piece_type = PIECE_KNIGHT; break;
-            case 'B': move->piece_type = PIECE_BISHOP; break;
-            case 'R': move->piece_type = PIECE_ROOK; break;
-            case 'Q': move->piece_type = PIECE_QUEEN; break;
-            case 'K': move->piece_type = PIECE_KING; break;
-            // Note: If it starts with '0', the Castling block below will handle it
+        else if (buf[1] == '-' && buf[2] == 'O' && buf[3] == '-' && buf[4] == 'O' && buf[5] == '\0')
+        {
+            move->is_castle = true;
+            move->castle_kingside = false;
         }
-    } else {
-        // If it starts with a-h, it's a pawn
-        move->piece_type = PIECE_PAWN;
+        else
+        {
+            panicf("parse error: expected O-O or O-O-O\n");
+        }
+        move->piece_type = PIECE_KING;
+        return true;
     }
-    // 2. Identify the Destination
-    // We only do this if it's NOT a castle (which starts with '0')
-    if (buf[0] != '0') {
-        char file_char = buf[len - 2]; //files are vertical columns a-h
-        char rank_char = buf[len - 1]; //ranks are horizontal rows 1-8
 
-        // 'a' becomes 0, 'b' becomes 1...
-        move->to_col = file_char - 'a';
+    enum chess_piece piece = PIECE_PAWN;
+    int i = 0;
 
-        // '1' becomes 7, '8' becomes 0 (Array index is flipped)
-        move->to_row = 8 - (rank_char - '0');
+    switch (buf[i])
+    {
+    case 'K':
+        piece = PIECE_KING;
+        i++;
+        break;
+    case 'Q':
+        piece = PIECE_QUEEN;
+        i++;
+        break;
+    case 'R':
+        piece = PIECE_ROOK;
+        i++;
+        break;
+    case 'B':
+        piece = PIECE_BISHOP;
+        i++;
+        break;
+    case 'N':
+        piece = PIECE_KNIGHT;
+        i++;
+        break;
+    default:
+        if (buf[i] < 'a' || buf[i] > 'h')
+        {
+            panicf("parse error at character '%c'\n", buf[i]);
+        }
+        piece = PIECE_PAWN;
+        break;
     }
-    
 
+    char disamb_file = 0;
+    char disamb_rank = 0;
+    char dest_file = 0;
+    char dest_rank = 0;
+
+    while (buf[i] != '\0')
+    {
+        char ch = buf[i];
+
+        if (ch == 'x')
+        {
+            move->is_capture = true;
+            i++;
+            continue;
+        }
+
+        if (ch >= 'a' && ch <= 'h')
+        {
+            if (buf[i + 1] >= '1' && buf[i + 1] <= '8')
+            {
+                dest_file = ch;
+                dest_rank = buf[i + 1];
+                i += 2;
+                break;
+            }
+            if (disamb_file != 0)
+                panicf("parse error: multiple file disambiguators\n");
+            disamb_file = ch;
+            i++;
+            continue;
+        }
+
+        if (ch >= '1' && ch <= '8')
+        {
+            if (buf[i + 1] >= 'a' && buf[i + 1] <= 'h' && buf[i + 2] >= '1' && buf[i + 2] <= '8' && dest_file == 0 && dest_rank == 0)
+            {
+                if (disamb_rank != 0)
+                    panicf("parse error: multiple rank disambiguators\n");
+                disamb_rank = ch;
+                dest_file = buf[i + 1];
+                dest_rank = buf[i + 2];
+                i += 3;
+                break;
+            }
+            if (disamb_rank != 0)
+                panicf("parse error: multiple rank disambiguators\n");
+            disamb_rank = ch;
+            i++;
+            continue;
+        }
+
+        break;
+    }
+
+    if (dest_file == 0 || dest_rank == 0)
+    {
+        if (buf[i] >= 'a' && buf[i] <= 'h' && buf[i + 1] >= '1' && buf[i + 1] <= '8')
+        {
+            dest_file = buf[i];
+            dest_rank = buf[i + 1];
+            i += 2;
+        }
+        else
+            panicf("parse error: missing destination square\n");
+    }
+
+    move->piece_type = piece;
+    move->to_col = dest_file - 'a';
+    move->to_row = 8 - (dest_rank - '0');
+
+    if (disamb_file != 0)
+        move->from_col = disamb_file - 'a';
+    else
+        move->from_col = -1;
+    if (disamb_rank != 0)
+        move->from_row = 8 - (disamb_rank - '0');
+    else
+        move->from_row = -1;
+
+    if (buf[i] != '\0')
+    {
+        char promo_ch = buf[i];
+        if (promo_ch == '=')
+            promo_ch = buf[++i];
+        if (promo_ch == 'Q' || promo_ch == 'R' || promo_ch == 'B' || promo_ch == 'N')
+        {
+            move->is_promotion = true;
+            switch (promo_ch)
+            {
+            case 'Q':
+                move->promo_piece = PIECE_QUEEN;
+                break;
+            case 'R':
+                move->promo_piece = PIECE_ROOK;
+                break;
+            case 'B':
+                move->promo_piece = PIECE_BISHOP;
+                break;
+            case 'N':
+                move->promo_piece = PIECE_KNIGHT;
+                break;
+            }
+            i++;
+        }
+        if (buf[i] != '\0')
+            panicf("parse error at character '%c'\n", buf[i]);
+    }
+
+    return true;
 }
