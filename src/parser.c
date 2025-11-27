@@ -4,39 +4,52 @@
 
 bool parse_move(struct chess_move *move)
 {
-    char c;
+    char current_char;
     do
     {
-        c = getc(stdin);
-        if (c == EOF)
+        current_char = getc(stdin);
+        if (current_char == EOF)
+        {
             return false;
-    } while (c == ' ');
+        }
+    } while (current_char == ' ');
 
-    if (c == '\n' || c == '\r')
-        return false;
-
-    char buf[32];
-    int len = 0;
-
-    if (c != ' ' && c != '\n' && c != '\r')
+    if (current_char == '\n' || current_char == '\r')
     {
-        buf[len++] = c;
+        return false;
+    }
+
+    char input_buffer[32];
+    int input_length = 0;
+
+    if (current_char != ' ' && current_char != '\n' && current_char != '\r')
+    {
+        input_buffer[input_length++] = current_char;
     }
 
     while (1)
     {
-        c = getc(stdin);
-        if (c == EOF || c == '\n' || c == '\r')
+        current_char = getc(stdin);
+        if (current_char == EOF || current_char == '\n' || current_char == '\r')
+        {
             break;
-        if (c == ' ')
+        }
+        if (current_char == ' ')
+        {
             continue;
-        if (len < (int)(sizeof(buf) - 1))
-            buf[len++] = c;
+        }
+        if (input_length < (int)(sizeof(input_buffer) - 1))
+        {
+            input_buffer[input_length++] = current_char;
+        }
     }
-    buf[len] = '\0';
 
-    if (len == 0)
+    input_buffer[input_length] = '\0';
+
+    if (input_length == 0)
+    {
         return false;
+    }
 
     move->is_castle = false;
     move->castle_kingside = false;
@@ -48,14 +61,14 @@ bool parse_move(struct chess_move *move)
     move->to_row = -1;
     move->to_col = -1;
 
-    if (buf[0] == 'O')
+    if (input_buffer[0] == 'O')
     {
-        if (buf[1] == '-' && buf[2] == 'O' && buf[3] == '\0')
+        if (input_buffer[1] == '-' && input_buffer[2] == 'O' && input_buffer[3] == '\0')
         {
             move->is_castle = true;
             move->castle_kingside = true;
         }
-        else if (buf[1] == '-' && buf[2] == 'O' && buf[3] == '-' && buf[4] == 'O' && buf[5] == '\0')
+        else if (input_buffer[1] == '-' && input_buffer[2] == 'O' && input_buffer[3] == '-' && input_buffer[4] == 'O' && input_buffer[5] == '\0')
         {
             move->is_castle = true;
             move->castle_kingside = false;
@@ -71,7 +84,7 @@ bool parse_move(struct chess_move *move)
     enum chess_piece piece = PIECE_PAWN;
     int i = 0;
 
-    switch (buf[i])
+    switch (input_buffer[i])
     {
     case 'K':
         piece = PIECE_KING;
@@ -94,9 +107,9 @@ bool parse_move(struct chess_move *move)
         i++;
         break;
     default:
-        if (buf[i] < 'a' || buf[i] > 'h')
+        if (input_buffer[i] < 'a' || input_buffer[i] > 'h')
         {
-            panicf("parse error at character '%c'\n", buf[i]);
+            panicf("parse error at character '%c'\n", input_buffer[i]);
         }
         piece = PIECE_PAWN;
         break;
@@ -107,9 +120,9 @@ bool parse_move(struct chess_move *move)
     char dest_file = 0;
     char dest_rank = 0;
 
-    while (buf[i] != '\0')
+    while (input_buffer[i] != '\0')
     {
-        char ch = buf[i];
+        char ch = input_buffer[i];
 
         if (ch == 'x')
         {
@@ -120,15 +133,17 @@ bool parse_move(struct chess_move *move)
 
         if (ch >= 'a' && ch <= 'h')
         {
-            if (buf[i + 1] >= '1' && buf[i + 1] <= '8')
+            if (input_buffer[i + 1] >= '1' && input_buffer[i + 1] <= '8')
             {
                 dest_file = ch;
-                dest_rank = buf[i + 1];
+                dest_rank = input_buffer[i + 1];
                 i += 2;
                 break;
             }
             if (disamb_file != 0)
-                panicf("parse error: multiple file disambiguators\n");
+            {
+                return false;
+            }
             disamb_file = ch;
             i++;
             continue;
@@ -136,18 +151,22 @@ bool parse_move(struct chess_move *move)
 
         if (ch >= '1' && ch <= '8')
         {
-            if (buf[i + 1] >= 'a' && buf[i + 1] <= 'h' && buf[i + 2] >= '1' && buf[i + 2] <= '8' && dest_file == 0 && dest_rank == 0)
+            if (input_buffer[i + 1] >= 'a' && input_buffer[i + 1] <= 'h' && input_buffer[i + 2] >= '1' && input_buffer[i + 2] <= '8' && dest_file == 0 && dest_rank == 0)
             {
                 if (disamb_rank != 0)
-                    panicf("parse error: multiple rank disambiguators\n");
+                {
+                    return false;
+                }
                 disamb_rank = ch;
-                dest_file = buf[i + 1];
-                dest_rank = buf[i + 2];
+                dest_file = input_buffer[i + 1];
+                dest_rank = input_buffer[i + 2];
                 i += 3;
                 break;
             }
             if (disamb_rank != 0)
-                panicf("parse error: multiple rank disambiguators\n");
+            {
+                return false;
+            }
             disamb_rank = ch;
             i++;
             continue;
@@ -158,14 +177,16 @@ bool parse_move(struct chess_move *move)
 
     if (dest_file == 0 || dest_rank == 0)
     {
-        if (buf[i] >= 'a' && buf[i] <= 'h' && buf[i + 1] >= '1' && buf[i + 1] <= '8')
+        if (input_buffer[i] >= 'a' && input_buffer[i] <= 'h' && input_buffer[i + 1] >= '1' && input_buffer[i + 1] <= '8')
         {
-            dest_file = buf[i];
-            dest_rank = buf[i + 1];
+            dest_file = input_buffer[i];
+            dest_rank = input_buffer[i + 1];
             i += 2;
         }
         else
-            panicf("parse error: missing destination square\n");
+        {
+            return false;
+        }
     }
 
     move->piece_type = piece;
@@ -173,19 +194,29 @@ bool parse_move(struct chess_move *move)
     move->to_row = 8 - (dest_rank - '0');
 
     if (disamb_file != 0)
-        move->from_col = disamb_file - 'a';
-    else
-        move->from_col = -1;
-    if (disamb_rank != 0)
-        move->from_row = 8 - (disamb_rank - '0');
-    else
-        move->from_row = -1;
-
-    if (buf[i] != '\0')
     {
-        char promo_ch = buf[i];
+        move->from_col = disamb_file - 'a';
+    }
+    else
+    {
+        move->from_col = -1;
+    }
+    if (disamb_rank != 0)
+    {
+        move->from_row = 8 - (disamb_rank - '0');
+    }
+    else
+    {
+        move->from_row = -1;
+    }
+
+    if (input_buffer[i] != '\0')
+    {
+        char promo_ch = input_buffer[i];
         if (promo_ch == '=')
-            promo_ch = buf[++i];
+        {
+            promo_ch = input_buffer[++i];
+        }
         if (promo_ch == 'Q' || promo_ch == 'R' || promo_ch == 'B' || promo_ch == 'N')
         {
             move->is_promotion = true;
@@ -206,8 +237,10 @@ bool parse_move(struct chess_move *move)
             }
             i++;
         }
-        if (buf[i] != '\0')
-            panicf("parse error at character '%c'\n", buf[i]);
+        if (input_buffer[i] != '\0')
+        {
+            return false;
+        }
     }
 
     return true;
